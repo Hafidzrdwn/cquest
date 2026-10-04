@@ -1,14 +1,14 @@
 import { Card, Enemy, PlayerState, BattleState } from '../types/game';
 
-// Player 1 Starter Deck (Empathy & Support)
+// Dek Awal Pemain 1: Si Penenang Hati (Dukungan & Perlindungan)
 export const PLAYER_1_STARTER_DECK: Card[] = [
   {
     id: 'p1_listen_1',
-    name: 'Active Listening',
+    name: 'Mendengarkan Penuh',
     cost: 1,
     type: 'SHIELD',
     value: 6,
-    description: 'Mendengarkan tanpa memotong. Memberikan 6 Shield untuk tim.',
+    description: 'Mendengarkan tanpa menyela atau menghakimi. Memberikan 6 Pertahanan untuk kita berdua.',
     targetType: 'TEAM',
     icon: 'Ear',
     roleOwner: 'EMPATHY',
@@ -16,11 +16,11 @@ export const PLAYER_1_STARTER_DECK: Card[] = [
   },
   {
     id: 'p1_listen_2',
-    name: 'Active Listening',
+    name: 'Mendengarkan Penuh',
     cost: 1,
     type: 'SHIELD',
     value: 6,
-    description: 'Mendengarkan tanpa memotong. Memberikan 6 Shield untuk tim.',
+    description: 'Mendengarkan tanpa menyela atau menghakimi. Memberikan 6 Pertahanan untuk kita berdua.',
     targetType: 'TEAM',
     icon: 'Ear',
     roleOwner: 'EMPATHY',
@@ -28,11 +28,11 @@ export const PLAYER_1_STARTER_DECK: Card[] = [
   },
   {
     id: 'p1_hug_1',
-    name: 'Warm Hug',
+    name: 'Pelukan Hangat',
     cost: 2,
     type: 'HEAL',
     value: 4,
-    description: 'Pelukan hangat penenang hati. Memulihkan 4 HP dan memberi 3 Shield.',
+    description: 'Pelukan erat penenang jiwa. Memulihkan 4 Darah dan memberi 3 Pertahanan tambahan.',
     targetType: 'TEAM',
     icon: 'HeartHandshake',
     roleOwner: 'EMPATHY',
@@ -40,11 +40,11 @@ export const PLAYER_1_STARTER_DECK: Card[] = [
   },
   {
     id: 'p1_calm_1',
-    name: 'Calm Down',
+    name: 'Tarik Napas Bersama',
     cost: 1,
     type: 'BUFF',
     value: 1,
-    description: 'Tarik napas bersama. Menghapus 1 status debuff tim dan memicu Sympathy Link.',
+    description: 'Tarik napas sejenak. Menghilangkan 1 beban pikiran dan membuka celah Kombo Cinta.',
     targetType: 'TEAM',
     icon: 'Wind',
     roleOwner: 'EMPATHY',
@@ -52,11 +52,11 @@ export const PLAYER_1_STARTER_DECK: Card[] = [
   },
   {
     id: 'p1_strike_1',
-    name: 'Empathy Strike',
+    name: 'Sentuhan Lembut',
     cost: 1,
     type: 'ATTACK',
     value: 5,
-    description: 'Teguran lembut yang menyadarkan. Menghasilkan 5 Damage.',
+    description: 'Teguran halus penuh kasih yang menyadarkan. Memberikan 5 Serangan ke monster.',
     targetType: 'ENEMY',
     icon: 'Sparkles',
     roleOwner: 'EMPATHY',
@@ -64,15 +64,15 @@ export const PLAYER_1_STARTER_DECK: Card[] = [
   },
 ];
 
-// Player 2 Starter Deck (Courage & Offense)
+// Dek Awal Pemain 2: Si Pemberani (Aksi Nyata & Dobrak Pertahanan)
 export const PLAYER_2_STARTER_DECK: Card[] = [
   {
     id: 'p2_talk_1',
-    name: 'Direct Talk',
+    name: 'Bicara Jujur',
     cost: 1,
     type: 'ATTACK',
     value: 8,
-    description: 'Katakan apa adanya secara jujur. Menghasilkan 8 Damage.',
+    description: 'Menyampaikan isi hati secara terbuka dan tulus. Memberikan 8 Serangan telak.',
     targetType: 'ENEMY',
     icon: 'MessageSquareWarning',
     roleOwner: 'COURAGE',
@@ -80,11 +80,11 @@ export const PLAYER_2_STARTER_DECK: Card[] = [
   },
   {
     id: 'p2_talk_2',
-    name: 'Direct Talk',
+    name: 'Bicara Jujur',
     cost: 1,
     type: 'ATTACK',
     value: 8,
-    description: 'Katakan apa adanya secara jujur. Menghasilkan 8 Damage.',
+    description: 'Menyampaikan isi hati secara terbuka dan tulus. Memberikan 8 Serangan telak.',
     targetType: 'ENEMY',
     icon: 'MessageSquareWarning',
     roleOwner: 'COURAGE',
@@ -92,11 +92,11 @@ export const PLAYER_2_STARTER_DECK: Card[] = [
   },
   {
     id: 'p2_guard_1',
-    name: 'Protective Stance',
+    name: 'Pasang Badan',
     cost: 1,
     type: 'SHIELD',
     value: 4,
-    description: 'Pasang badan demi pasangan. Memberikan 4 Shield.',
+    description: 'Siap melindungi pasangan dari cobaan. Memberikan 4 Pertahanan tim.',
     targetType: 'TEAM',
     icon: 'Shield',
     roleOwner: 'COURAGE',
@@ -104,11 +104,11 @@ export const PLAYER_2_STARTER_DECK: Card[] = [
   },
   {
     id: 'p2_leap_1',
-    name: 'Courageous Leap',
+    name: 'Lompatan Berani',
     cost: 2,
     type: 'ATTACK',
     value: 14,
-    description: 'Lompatan penuh keberanian. Menghasilkan 14 Damage telak.',
+    description: 'Mengambil inisiatif tanpa ragu-ragu. Memberikan 14 Serangan dahsyat ke monster.',
     targetType: 'ENEMY',
     icon: 'Flame',
     roleOwner: 'COURAGE',
@@ -116,11 +116,11 @@ export const PLAYER_2_STARTER_DECK: Card[] = [
   },
   {
     id: 'p2_vuln_1',
-    name: 'Vulnerability Strike',
+    name: 'Ungkap Perasaan',
     cost: 1,
     type: 'ATTACK',
     value: 5,
-    description: 'Buka kerapuhan monster. 5 Damage + status Vulnerable (+50% dmg taken).',
+    description: 'Membuka kerapuhan monster. Memberi 5 Serangan + Monster menerima bonus +50% sakit.',
     targetType: 'ENEMY',
     icon: 'Zap',
     roleOwner: 'COURAGE',
@@ -128,11 +128,11 @@ export const PLAYER_2_STARTER_DECK: Card[] = [
   },
 ];
 
-// Initial Monsters
+// Daftar Monster Labirin Emosi
 export const STAGE_ENEMIES: Enemy[] = [
   {
     id: 'enemy_overthinking',
-    name: 'The Overthinking Phantom',
+    name: 'Hantu Pikiran Kusut',
     maxHp: 60,
     currentHp: 60,
     shield: 0,
@@ -140,12 +140,12 @@ export const STAGE_ENEMIES: Enemy[] = [
       type: 'ATTACK',
       value: 10,
       icon: 'Brain',
-      description: 'Menyiapkan Serangan Keraguan (10 DMG)',
+      description: 'Menyiapkan Serangan Keraguan (10 Serangan)',
     },
   },
   {
     id: 'enemy_terserah',
-    name: 'The "Terserah" Slime',
+    name: 'Slime "Terserah"',
     maxHp: 90,
     currentHp: 90,
     shield: 10,
@@ -153,12 +153,12 @@ export const STAGE_ENEMIES: Enemy[] = [
       type: 'DEBUFF',
       value: 1,
       icon: 'HelpCircle',
-      description: 'Mengacak beban pikiran dan menyebarkan kebingungan',
+      description: 'Menyebarkan Kebingungan & Beban Pikiran',
     },
   },
   {
     id: 'enemy_silent',
-    name: 'The Silent Treatment Golem',
+    name: 'Golem Diam-diaman',
     maxHp: 140,
     currentHp: 140,
     shield: 40,
@@ -166,7 +166,7 @@ export const STAGE_ENEMIES: Enemy[] = [
       type: 'DEFEND',
       value: 40,
       icon: 'ShieldAlert',
-      description: 'Membangun tembok batu bisu tebal (40 Shield)',
+      description: 'Membangun Tembok Bisu Dingin (40 Pertahanan)',
     },
   },
 ];
@@ -174,7 +174,7 @@ export const STAGE_ENEMIES: Enemy[] = [
 export const INITIAL_PLAYER_1: PlayerState = {
   id: 1,
   role: 'EMPATHY',
-  name: 'Empathy Pillar',
+  name: 'Si Penenang Hati',
   currentHp: 30,
   maxHp: 30,
   energy: 3,
@@ -188,7 +188,7 @@ export const INITIAL_PLAYER_1: PlayerState = {
 export const INITIAL_PLAYER_2: PlayerState = {
   id: 2,
   role: 'COURAGE',
-  name: 'Courage Blade',
+  name: 'Si Pemberani',
   currentHp: 30,
   maxHp: 30,
   energy: 3,

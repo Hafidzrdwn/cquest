@@ -241,3 +241,37 @@ export const EnergyOrbSVG: React.FC<SVGProps> = ({ size = 18, className = '', ..
     <polygon points="9,4 13,7 13,11 9,14 5,11 5,7" fill="currentColor" fillOpacity="0.8" />
   </svg>
 );
+
+// Official Logo Crest: Couple Quest (Hati, Pedang & Perisai Batu)
+export const CoupleQuestLogoSVG: React.FC<SVGProps> = ({ size = 28, className = '', ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 32 32"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    {...props}
+  >
+    {/* Batu Pelindung Luar */}
+    <polygon points="16,2 29,8 29,24 16,30 3,24 3,8" fill="#11131a" stroke="#d97706" strokeWidth="1.5" strokeLinejoin="round" />
+    <polygon points="16,4 27,9.5 27,22.5 16,28 5,22.5 5,9.5" fill="#181c26" stroke="#2e3547" strokeWidth="1" strokeLinejoin="round" />
+    
+    {/* Pedang Keberanian (Crossed) */}
+    <path d="M10 22L22 10" stroke="#94a3b8" strokeWidth="1.75" strokeLinecap="round" />
+    <path d="M22 22L10 10" stroke="#94a3b8" strokeWidth="1.75" strokeLinecap="round" />
+    <circle cx="10" cy="22" r="1.25" fill="#f59e0b" />
+    <circle cx="22" cy="22" r="1.25" fill="#f59e0b" />
+
+    {/* Hati Empati (Pusat) */}
+    <path
+      d="M16 23.5L14.5 22C9.5 17.5 7 14.5 7 11.5C7 9 9 7 11.5 7C13 7 14.5 7.8 16 9C17.5 7.8 19 7 20.5 7C23 7 25 9 25 11.5C25 14.5 22.5 17.5 17.5 22L16 23.5Z"
+      fill="#b91c1c"
+      stroke="#f87171"
+      strokeWidth="1.25"
+      strokeLinejoin="round"
+    />
+    <circle cx="16" cy="12.5" r="1.2" fill="#fef08a" />
+  </svg>
+);
+
