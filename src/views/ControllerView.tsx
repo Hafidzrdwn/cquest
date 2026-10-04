@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, RefreshCw, Send } from 'lucide-react';
 import { PlayerId, Card, PlayerState } from '../types/game';
 import { INITIAL_PLAYER_1, INITIAL_PLAYER_2 } from '../data/initialGameData';
 import { 
@@ -9,10 +9,12 @@ import {
   IronShieldSVG 
 } from '../components/svg/DungeonArt';
 import { GlossaryModal } from '../components/GlossaryModal';
+import { useControllerHub } from '../hooks/useControllerHub';
 import { cn } from '../lib/utils';
 
 export const ControllerView: React.FC = () => {
-  const searchParams = new URLSearchParams(window.location.search);
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const roomParam = (searchParams.get('room') || 'LOVE').toUpperCase().slice(0, 6);
   const paramPlayer = searchParams.get('player');
   const initialPlayerId: PlayerId = paramPlayer === '2' ? 2 : 1;
 
@@ -24,8 +26,34 @@ export const ControllerView: React.FC = () => {
   const [lastPlayedCardName, setLastPlayedCardName] = useState<string | null>(null);
   const [isGlossaryOpen, setIsGlossaryOpen] = useState<boolean>(false);
 
+  // WebRTC Controller Hub Hook
+  const hub = useControllerHub({
+    targetRoom: roomParam,
+    desiredPlayer: activePlayerId,
+    playerName: activePlayerId === 1 ? 'Empathy' : 'Courage',
+    onHandSync: (syncPayload) => {
+      setPlayerState((prev) => ({
+        ...prev,
+        energy: syncPayload.energy,
+        maxEnergy: syncPayload.maxEnergy,
+        hand: syncPayload.hand.map((h) => ({
+          id: h.id,
+          name: h.title,
+          cost: h.cost,
+          type: h.type,
+          description: h.description,
+          icon: h.icon,
+          value: h.value,
+          targetType: h.targetType,
+          roleOwner: activePlayerId === 1 ? 'EMPATHY' : 'COURAGE',
+        })),
+      }));
+    },
+  });
+
   const handleSelectRole = (id: PlayerId) => {
     setActivePlayerId(id);
+    hub.setAssignedPlayer(id);
     setPlayerState(id === 1 ? INITIAL_PLAYER_1 : INITIAL_PLAYER_2);
     setSelectedCardId(null);
   };
@@ -36,13 +64,13 @@ export const ControllerView: React.FC = () => {
       return;
     }
 
-    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-      navigator.vibrate(40);
-    }
+    // Dispatch via WebRTC DataChannel to Host Arena
+    const sent = hub.dispatchPlayCard(card.id, 'enemy');
 
+    // Optimistically update local hand & energy
     setPlayerState((prev) => ({
       ...prev,
-      energy: prev.energy - card.cost,
+      energy: Math.max(0, prev.energy - card.cost),
       hand: prev.hand.filter((c) => c.id !== card.id),
       discardPile: [...prev.discardPile, card],
     }));
@@ -52,7 +80,22 @@ export const ControllerView: React.FC = () => {
 
     setTimeout(() => {
       setLastPlayedCardName(null);
-    }, 2200);
+    }, 2500);
+
+    if (!sent && !hub.isConnected) {
+      console.warn('Card played locally (offline mode / waiting host)');
+    }
+  };
+
+  const handleEndTurn = () => {
+    hub.dispatchEndTurn();
+
+    // Optimistic replenish
+    setPlayerState((prev) => ({
+      ...prev,
+      energy: prev.maxEnergy,
+      hand: activePlayerId === 1 ? INITIAL_PLAYER_1.hand : INITIAL_PLAYER_2.hand,
+    }));
   };
 
   const isEmpathy = activePlayerId === 1;
@@ -88,15 +131,42 @@ export const ControllerView: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-[#0a0b0e] text-stone-200 flex flex-col justify-between p-4 max-w-md mx-auto select-none font-sans">
-      {/* Top Header: Role Selector & Vitality */}
+      {/* Top Header: Role Selector & Connectivity Bar */}
       <header className="flex flex-col gap-2.5 pt-1">
+        {/* Connection Status Pill */}
+        <div className="flex items-center justify-between text-[11px] font-mono px-3 py-1.5 rounded-lg bg-[#11131a] border border-[#1e2330]">
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              "w-2 h-2 rounded-full",
+              hub.isConnected ? "bg-emerald-400" : hub.isConnecting ? "bg-amber-400 animate-ping" : "bg-red-500"
+            )} />
+            <span className="text-stone-300">
+              {hub.isConnected
+                ? `Tersambung ke Room "${hub.roomCode}"`
+                : hub.isConnecting
+                ? `Menghubungkan ke Host (${hub.roomCode})...`
+                : 'Terputus dari Host'}
+            </span>
+          </div>
+
+          {!hub.isConnected && (
+            <button
+              onClick={hub.reconnect}
+              className="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-1 underline"
+            >
+              <RefreshCw className="w-3 h-3" />
+              <span>Sambung Ulang</span>
+            </button>
+          )}
+        </div>
+
         {/* Role Toggle Tab & Glossary Button */}
         <div className="flex items-center gap-2">
           <div className="grid grid-cols-2 flex-1 rounded-lg bg-[#11131a] p-1 border border-[#1e2330] text-xs font-mono">
             <button
               onClick={() => handleSelectRole(1)}
               className={cn(
-                "py-1.5 rounded flex items-center justify-center gap-1.5 transition",
+                "py-1.5 rounded flex items-center justify-center gap-1.5 transition cursor-pointer",
                 isEmpathy 
                   ? "bg-[#162125] text-teal-300 border border-[#23353b]" 
                   : "text-stone-400 hover:text-stone-300"
@@ -108,7 +178,7 @@ export const ControllerView: React.FC = () => {
             <button
               onClick={() => handleSelectRole(2)}
               className={cn(
-                "py-1.5 rounded flex items-center justify-center gap-1.5 transition",
+                "py-1.5 rounded flex items-center justify-center gap-1.5 transition cursor-pointer",
                 !isEmpathy 
                   ? "bg-[#23171c] text-amber-400 border border-[#3b222b]" 
                   : "text-stone-400 hover:text-stone-300"
@@ -121,7 +191,7 @@ export const ControllerView: React.FC = () => {
 
           <button
             onClick={() => setIsGlossaryOpen(true)}
-            className="h-9 px-2.5 rounded-lg bg-[#11131a] hover:bg-[#1a1f2c] border border-[#1e2330] text-amber-400 text-xs font-mono flex items-center gap-1.5 transition shrink-0"
+            className="h-9 px-2.5 rounded-lg bg-[#11131a] hover:bg-[#1a1f2c] border border-[#1e2330] text-amber-400 text-xs font-mono flex items-center gap-1.5 transition shrink-0 cursor-pointer"
             title="Buka Glosarium & Panduan"
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -172,7 +242,9 @@ export const ControllerView: React.FC = () => {
           </div>
         ) : (
           <span className="text-[11px] font-mono text-stone-400">
-            Sentuh kartu di bawah untuk memilih, lalu lempar ke laptop!
+            {hub.isConnected
+              ? 'Sentuh kartu di bawah untuk memilih, lalu lempar ke laptop!'
+              : 'Menghubungkan ke layar laptop... Kamu tetap bisa mencoba kartu secara lokal.'}
           </span>
         )}
       </div>
@@ -232,13 +304,14 @@ export const ControllerView: React.FC = () => {
                       }}
                       disabled={!canAfford}
                       className={cn(
-                        "px-3.5 py-1 rounded text-xs font-mono font-semibold transition",
+                        "px-3.5 py-1 rounded text-xs font-mono font-semibold transition cursor-pointer flex items-center gap-1.5",
                         canAfford
                           ? "bg-amber-600 hover:bg-amber-500 text-stone-950 active:scale-95 shadow"
                           : "bg-[#181a24] text-stone-400 border border-[#252a38] cursor-not-allowed"
                       )}
                     >
-                      Play Card ({card.cost} Energy)
+                      <Send className="w-3 h-3" />
+                      <span>Play Card ({card.cost} Energy)</span>
                     </button>
                   </div>
                 )}
@@ -255,17 +328,8 @@ export const ControllerView: React.FC = () => {
 
         {/* End Turn Button */}
         <button
-          onClick={() => {
-            setPlayerState(prev => ({
-              ...prev,
-              energy: prev.maxEnergy,
-              hand: (activePlayerId === 1 ? INITIAL_PLAYER_1.hand : INITIAL_PLAYER_2.hand),
-            }));
-            if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-              navigator.vibrate(30);
-            }
-          }}
-          className="w-full mt-1 py-2.5 rounded-lg bg-[#141722] hover:bg-[#1a1f2e] border border-[#242b3d] text-stone-300 font-mono text-xs flex items-center justify-center gap-1.5 transition active:scale-98"
+          onClick={handleEndTurn}
+          className="w-full mt-1 py-2.5 rounded-lg bg-[#141722] hover:bg-[#1a1f2e] border border-[#242b3d] text-stone-300 font-mono text-xs flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer"
         >
           <IronShieldSVG size={14} className="text-stone-400" />
           <span>End Turn (Selesaikan Giliran)</span>
