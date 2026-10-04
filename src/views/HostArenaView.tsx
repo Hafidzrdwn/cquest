@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Check, ChevronRight, BookOpen, Wifi } from 'lucide-react';
+import { BookOpen, Wifi } from 'lucide-react';
 import { BattleState, PlayCardPayload, EndTurnPayload } from '../types/game';
-import { INITIAL_BATTLE_STATE, PLAYER_1_STARTER_DECK, PLAYER_2_STARTER_DECK } from '../data/initialGameData';
+import { INITIAL_BATTLE_STATE } from '../data/initialGameData';
 import { 
   OverthinkingPhantomSVG, 
   EmpathyRuneSVG, 
@@ -11,7 +10,9 @@ import {
   CoupleQuestLogoSVG
 } from '../components/svg/DungeonArt';
 import { GlossaryModal } from '../components/GlossaryModal';
+import { HostLobby } from '../components/host/HostLobby';
 import { useHostGameHub } from '../hooks/useHostGameHub';
+import { generateStarterDeck, drawInitialHand } from '../utils/deckGenerator';
 import { cn } from '../lib/utils';
 
 export const HostArenaView: React.FC = () => {
@@ -21,20 +22,9 @@ export const HostArenaView: React.FC = () => {
 
   const [roomCode] = useState<string>(initialRoom);
   const [battleState, setBattleState] = useState<BattleState>(INITIAL_BATTLE_STATE);
-  const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [isGlossaryOpen, setIsGlossaryOpen] = useState<boolean>(false);
   const [lastEventNotice, setLastEventNotice] = useState<string | null>(null);
   const [comboBanner, setComboBanner] = useState<string | null>(null);
-
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  const p1ControllerUrl = `${baseUrl}/controller?room=${roomCode}&player=1`;
-  const p2ControllerUrl = `${baseUrl}/controller?room=${roomCode}&player=2`;
-
-  const copyToClipboard = (url: string, key: string) => {
-    navigator.clipboard.writeText(url);
-    setCopiedLink(key);
-    setTimeout(() => setCopiedLink(null), 2000);
-  };
 
   const battleStateRef = useRef(battleState);
   useEffect(() => {
@@ -138,17 +128,24 @@ export const HostArenaView: React.FC = () => {
     const current = battleStateRef.current;
     console.log(`[HostArena] End turn requested by P${payload.player}`);
 
-    // Replenish energy & draw cards for new round
+    // Replenish energy & draw cards for new round from draw pile
+    const p1Deck = generateStarterDeck('EMPATHY');
+    const p2Deck = generateStarterDeck('COURAGE');
+    const p1Hand = drawInitialHand(p1Deck, 4);
+    const p2Hand = drawInitialHand(p2Deck, 4);
+
     const nextPlayers = {
       1: {
         ...current.players[1],
         energy: current.players[1].maxEnergy,
-        hand: PLAYER_1_STARTER_DECK.slice(0, 4),
+        hand: p1Hand.hand,
+        drawPile: p1Hand.drawPile,
       },
       2: {
         ...current.players[2],
         energy: current.players[2].maxEnergy,
-        hand: PLAYER_2_STARTER_DECK.slice(0, 4),
+        hand: p2Hand.hand,
+        drawPile: p2Hand.drawPile,
       },
     };
 
@@ -200,6 +197,53 @@ export const HostArenaView: React.FC = () => {
     },
   });
 
+  // Handler to start game from Lobby & distribute 10-card starter decks
+  const handleStartGameFromLobby = () => {
+    const p1Deck = generateStarterDeck('EMPATHY');
+    const p2Deck = generateStarterDeck('COURAGE');
+
+    const p1HandData = drawInitialHand(p1Deck, 4);
+    const p2HandData = drawInitialHand(p2Deck, 4);
+
+    const updatedPlayers = {
+      1: {
+        ...battleState.players[1],
+        hand: p1HandData.hand,
+        drawPile: p1HandData.drawPile,
+        discardPile: [],
+        energy: 3,
+        maxEnergy: 3,
+        currentHp: 30,
+        maxHp: 30,
+      },
+      2: {
+        ...battleState.players[2],
+        hand: p2HandData.hand,
+        drawPile: p2HandData.drawPile,
+        discardPile: [],
+        energy: 3,
+        maxEnergy: 3,
+        currentHp: 30,
+        maxHp: 30,
+      },
+    };
+
+    const nextState: BattleState = {
+      ...battleState,
+      phase: 'PLAYER_TURN',
+      turnCount: 1,
+      teamSynergyScore: 50,
+      players: updatedPlayers,
+    };
+
+    setBattleState(nextState);
+    setLastEventNotice('Pertarungan dimulai! Giliran pasangan beraksi.');
+    setTimeout(() => setLastEventNotice(null), 3000);
+
+    hostHub.syncPlayerHands(updatedPlayers, 'PLAYER_TURN', 50);
+    hostHub.sendHapticFeedback('BOTH', 'COMBO');
+  };
+
   // Sync hand whenever players connect or ready
   useEffect(() => {
     if (hostHub.isReady && (hostHub.p1Connected || hostHub.p2Connected)) {
@@ -212,7 +256,7 @@ export const HostArenaView: React.FC = () => {
   const getPhaseDisplay = (phase: BattleState['phase']) => {
     switch (phase) {
       case 'LOBBY':
-        return 'LOBBY (Ruang Santai)';
+        return 'LOBBY (Ruang Tunggu)';
       case 'PLAYER_TURN':
         return 'PLAYER TURN (Giliran Pasangan)';
       case 'RESOLUTION':
@@ -225,6 +269,8 @@ export const HostArenaView: React.FC = () => {
         return 'DEFEAT (Coba Lagi Bareng)';
     }
   };
+
+  const isLobby = battleState.phase === 'LOBBY';
 
   return (
     <div className="min-h-screen w-full bg-[#0a0b0e] text-stone-200 flex flex-col justify-between selection:bg-amber-900 selection:text-amber-100">
@@ -287,212 +333,189 @@ export const HostArenaView: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Chamber: Monster Encounter & Stage Altar */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-6 flex flex-col justify-between gap-6">
-        {/* Stage & Turn Indicator */}
-        <div className="flex items-center justify-between text-xs text-stone-400 font-mono border-b border-[#181b26] pb-3">
-          <div>DUNGEON STAGE {battleState.stageLevel} &bull; TURN {battleState.turnCount}</div>
-          <div className="flex items-center gap-2">
-            <span className={cn(
-              "w-2 h-2 rounded-full",
-              hostHub.isReady ? "bg-emerald-400" : "bg-amber-400 animate-ping"
-            )} />
-            <span>{hostHub.isReady ? `WebRTC Ready (${hostHub.hostPeerId})` : 'Inisialisasi WebRTC...'}</span>
-          </div>
-        </div>
-
-        {/* Dynamic Combo Banner */}
-        {comboBanner && (
-          <div className="w-full max-w-md mx-auto py-2 px-4 rounded-xl bg-gradient-to-r from-amber-600/40 via-rose-600/40 to-teal-600/40 border border-amber-400/80 text-center text-amber-200 text-xs font-bold font-mono tracking-wider animate-bounce shadow-xl">
-            ✨ {comboBanner} ✨
-          </div>
-        )}
-
-        {/* Live Card Play Notice */}
-        {lastEventNotice && !comboBanner && (
-          <div className="w-full max-w-md mx-auto py-1.5 px-4 rounded-lg bg-[#141824] border border-[#2b354d] text-center text-stone-200 text-xs font-mono shadow">
-            {lastEventNotice}
-          </div>
-        )}
-
-        {/* Center Stage: Monster Altar */}
-        <div className="w-full flex flex-col items-center">
-          <div className="relative w-full max-w-lg bg-[#0e1017] border border-[#1e2230] rounded-xl p-6 flex flex-col items-center shadow-xl">
-            {/* Enemy Intent Banner */}
-            <div className="absolute -top-3.5 px-3 py-1 bg-[#181b25] border border-[#2f354a] rounded-md text-[11px] font-mono text-amber-200 flex items-center gap-2 shadow">
-              <span className="text-amber-400 font-bold">&#9876;</span>
-              <span>{currentEnemy.intent.description}</span>
+      {/* Main Chamber: Switch between Onboarding Lobby and Battle Arena */}
+      {isLobby ? (
+        <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-6 flex flex-col justify-center">
+          <HostLobby
+            roomCode={hostHub.roomCode}
+            p1Connected={hostHub.p1Connected}
+            p2Connected={hostHub.p2Connected}
+            onStartGame={handleStartGameFromLobby}
+            onSimulateConnect={(player) => {
+              setBattleState((prev) => ({
+                ...prev,
+                players: {
+                  ...prev.players,
+                  [player]: {
+                    ...prev.players[player],
+                    isConnected: true,
+                  },
+                },
+              }));
+            }}
+          />
+        </main>
+      ) : (
+        <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-6 flex flex-col justify-between gap-6 animate-in fade-in duration-300">
+          {/* Stage & Turn Indicator */}
+          <div className="flex items-center justify-between text-xs text-stone-400 font-mono border-b border-[#181b26] pb-3">
+            <div>DUNGEON STAGE {battleState.stageLevel} &bull; TURN {battleState.turnCount}</div>
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                "w-2 h-2 rounded-full",
+                hostHub.isReady ? "bg-emerald-400" : "bg-amber-400 animate-ping"
+              )} />
+              <span>{hostHub.isReady ? `WebRTC Ready (${hostHub.hostPeerId})` : 'Inisialisasi WebRTC...'}</span>
             </div>
+          </div>
 
-            {/* Monster Artwork SVG */}
-            <div className="my-2 p-2">
-              <OverthinkingPhantomSVG size={140} />
+          {/* Dynamic Combo Banner */}
+          {comboBanner && (
+            <div className="w-full max-w-md mx-auto py-2 px-4 rounded-xl bg-gradient-to-r from-amber-600/40 via-rose-600/40 to-teal-600/40 border border-amber-400/80 text-center text-amber-200 text-xs font-bold font-mono tracking-wider animate-bounce shadow-xl">
+              ✨ {comboBanner} ✨
             </div>
+          )}
 
-            {/* Monster Name & Shield */}
-            <div className="flex items-center gap-2 mt-1">
-              <h2 className="text-base font-semibold text-stone-100 tracking-wide font-heading">{currentEnemy.name}</h2>
-              {currentEnemy.shield > 0 && (
-                <div className="flex items-center gap-1 text-xs text-sky-300 bg-sky-950/40 border border-sky-800/60 px-2 py-0.5 rounded font-mono">
-                  <IronShieldSVG size={12} className="text-sky-400" />
-                  <span>{currentEnemy.shield} Shield</span>
-                </div>
-              )}
+          {/* Live Card Play Notice */}
+          {lastEventNotice && !comboBanner && (
+            <div className="w-full max-w-md mx-auto py-1.5 px-4 rounded-lg bg-[#141824] border border-[#2b354d] text-center text-stone-200 text-xs font-mono shadow">
+              {lastEventNotice}
             </div>
+          )}
 
-            {/* Monster Health Bar */}
-            <div className="w-full max-w-xs mt-3">
-              <div className="flex justify-between text-[11px] font-mono text-stone-400 mb-1">
-                <span>HP</span>
-                <span>{currentEnemy.currentHp} / {currentEnemy.maxHp}</span>
+          {/* Center Stage: Monster Altar */}
+          <div className="w-full flex flex-col items-center">
+            <div className="relative w-full max-w-lg bg-[#0e1017] border border-[#1e2230] rounded-xl p-6 flex flex-col items-center shadow-xl">
+              {/* Enemy Intent Banner */}
+              <div className="absolute -top-3.5 px-3 py-1 bg-[#181b25] border border-[#2f354a] rounded-md text-[11px] font-mono text-amber-200 flex items-center gap-2 shadow">
+                <span className="text-amber-400 font-bold">&#9876;</span>
+                <span>{currentEnemy.intent.description}</span>
               </div>
-              <div className="w-full h-2.5 bg-[#08090d] rounded-sm overflow-hidden p-[1px] border border-[#202534]">
-                <div 
-                  className="h-full bg-red-700 rounded-xs transition-all duration-300"
-                  style={{ width: `${(currentEnemy.currentHp / currentEnemy.maxHp) * 100}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Dual Player Pedestals: Player 1 & Player 2 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-2">
-          {/* Player 1: Empathy Pillar */}
-          <div className="bg-[#0d1115] border border-[#1b2529] rounded-xl p-4 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between pb-2.5 border-b border-[#162125]">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded bg-[#131b1f] border border-[#23353b] flex items-center justify-center text-teal-400">
-                    <EmpathyRuneSVG size={16} />
+              {/* Monster Artwork SVG */}
+              <div className="my-2 p-2">
+                <OverthinkingPhantomSVG size={140} />
+              </div>
+
+              {/* Monster Name & Shield */}
+              <div className="flex items-center gap-2 mt-1">
+                <h2 className="text-base font-semibold text-stone-100 tracking-wide font-heading">{currentEnemy.name}</h2>
+                {currentEnemy.shield > 0 && (
+                  <div className="flex items-center gap-1 text-xs text-sky-300 bg-sky-950/40 border border-sky-800/60 px-2 py-0.5 rounded font-mono">
+                    <IronShieldSVG size={12} className="text-sky-400" />
+                    <span>{currentEnemy.shield} Shield</span>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-xs text-stone-200 tracking-wide">Player 1: Empathy Pillar</h3>
-                    <p className="text-[10px] text-teal-400/80 font-mono">Support, Shield & Heal</p>
-                  </div>
-                </div>
-
-                <span className={cn(
-                  "text-[10px] font-mono px-2 py-0.5 rounded border flex items-center gap-1",
-                  hostHub.p1Connected
-                    ? "bg-teal-950/40 border-teal-800/80 text-teal-300"
-                    : "bg-[#11131a] border-[#222736] text-stone-400"
-                )}>
-                  <Wifi className="w-3 h-3" />
-                  {hostHub.p1Connected ? 'HP Terhubung!' : 'Menunggu Controller'}
-                </span>
+                )}
               </div>
 
-              {/* Stats Overview */}
-              <div className="grid grid-cols-2 gap-2 mt-3 font-mono text-xs">
-                <div className="bg-[#090c0f] border border-[#161e22] rounded p-2 flex justify-between">
-                  <span className="text-stone-400 text-[11px]">HP</span>
-                  <span className="text-stone-200 font-bold">{battleState.players[1].currentHp}/{battleState.players[1].maxHp}</span>
+              {/* Monster Health Bar */}
+              <div className="w-full max-w-xs mt-3">
+                <div className="flex justify-between text-[11px] font-mono text-stone-400 mb-1">
+                  <span>HP</span>
+                  <span>{currentEnemy.currentHp} / {currentEnemy.maxHp}</span>
                 </div>
-                <div className="bg-[#090c0f] border border-[#161e22] rounded p-2 flex justify-between">
-                  <span className="text-stone-400 text-[11px]">ENERGY</span>
-                  <span className="text-teal-300 font-bold">{battleState.players[1].energy}/{battleState.players[1].maxEnergy}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* QR Connection Box */}
-            <div className="mt-3 pt-3 border-t border-[#162125] flex items-center gap-3">
-              <div className="bg-white p-1.5 rounded shadow shrink-0">
-                <QRCodeSVG value={p1ControllerUrl} size={64} level="M" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] text-stone-300 font-medium">Scan QR ini dengan kamera HP Player 1</p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <button
-                    onClick={() => copyToClipboard(p1ControllerUrl, 'p1')}
-                    className="text-[10px] font-mono bg-[#131b1f] hover:bg-[#1b262c] text-stone-300 px-2 py-1 rounded border border-[#23353b] flex items-center gap-1 transition cursor-pointer"
-                  >
-                    {copiedLink === 'p1' ? <Check className="w-3 h-3 text-teal-400" /> : <Copy className="w-3 h-3" />}
-                    <span>{copiedLink === 'p1' ? 'Tersalin!' : 'Copy Link'}</span>
-                  </button>
-                  <a
-                    href={`/controller?room=${roomCode}&player=1`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[10px] font-mono text-teal-400/90 hover:underline flex items-center gap-0.5"
-                  >
-                    <span>Buka Tab</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </a>
+                <div className="w-full h-2.5 bg-[#08090d] rounded-sm overflow-hidden p-[1px] border border-[#202534]">
+                  <div 
+                    className="h-full bg-red-700 rounded-xs transition-all duration-300"
+                    style={{ width: `${(currentEnemy.currentHp / currentEnemy.maxHp) * 100}%` }}
+                  />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Player 2: Courage Blade */}
-          <div className="bg-[#120f12] border border-[#2a1d22] rounded-xl p-4 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between pb-2.5 border-b border-[#23171c]">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded bg-[#1a1317] border border-[#3b222b] flex items-center justify-center text-amber-500">
-                    <CourageBladeSVG size={16} />
+          {/* Dual Player Pedestals: Player 1 & Player 2 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-2">
+            {/* Player 1: Empathy Pillar */}
+            <div className="bg-[#0d1115] border border-[#1b2529] rounded-xl p-4 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-2.5 border-b border-[#162125]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded bg-[#131b1f] border border-[#23353b] flex items-center justify-center text-teal-400">
+                      <EmpathyRuneSVG size={16} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-xs text-stone-200 tracking-wide">Player 1: Empathy Pillar</h3>
+                      <p className="text-[10px] text-teal-400/80 font-mono">Support, Shield & Heal</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-xs text-stone-200 tracking-wide">Player 2: Courage Blade</h3>
-                    <p className="text-[10px] text-amber-500/80 font-mono">Offense, Strike & Armor Break</p>
+
+                  <span className={cn(
+                    "text-[10px] font-mono px-2 py-0.5 rounded border flex items-center gap-1",
+                    hostHub.p1Connected
+                      ? "bg-teal-950/40 border-teal-800/80 text-teal-300"
+                      : "bg-[#11131a] border-[#222736] text-stone-400"
+                  )}>
+                    <Wifi className="w-3 h-3" />
+                    {hostHub.p1Connected ? 'HP Terhubung!' : 'Menunggu Controller'}
+                  </span>
+                </div>
+
+                {/* Stats Overview */}
+                <div className="grid grid-cols-2 gap-2 mt-3 font-mono text-xs">
+                  <div className="bg-[#090c0f] border border-[#161e22] rounded p-2 flex justify-between">
+                    <span className="text-stone-400 text-[11px]">HP</span>
+                    <span className="text-stone-200 font-bold">{battleState.players[1].currentHp}/{battleState.players[1].maxHp}</span>
+                  </div>
+                  <div className="bg-[#090c0f] border border-[#161e22] rounded p-2 flex justify-between">
+                    <span className="text-stone-400 text-[11px]">ENERGY</span>
+                    <span className="text-teal-300 font-bold">{battleState.players[1].energy}/{battleState.players[1].maxEnergy}</span>
                   </div>
                 </div>
-
-                <span className={cn(
-                  "text-[10px] font-mono px-2 py-0.5 rounded border flex items-center gap-1",
-                  hostHub.p2Connected
-                    ? "bg-amber-950/40 border-amber-800/80 text-amber-300"
-                    : "bg-[#11131a] border-[#222736] text-stone-400"
-                )}>
-                  <Wifi className="w-3 h-3" />
-                  {hostHub.p2Connected ? 'HP Terhubung!' : 'Menunggu Controller'}
-                </span>
               </div>
 
-              {/* Stats Overview */}
-              <div className="grid grid-cols-2 gap-2 mt-3 font-mono text-xs">
-                <div className="bg-[#0d0a0c] border border-[#201419] rounded p-2 flex justify-between">
-                  <span className="text-stone-400 text-[11px]">HP</span>
-                  <span className="text-stone-200 font-bold">{battleState.players[2].currentHp}/{battleState.players[2].maxHp}</span>
-                </div>
-                <div className="bg-[#0d0a0c] border border-[#201419] rounded p-2 flex justify-between">
-                  <span className="text-stone-400 text-[11px]">ENERGY</span>
-                  <span className="text-amber-400 font-bold">{battleState.players[2].energy}/{battleState.players[2].maxEnergy}</span>
-                </div>
+              <div className="mt-2 text-[11px] font-mono text-stone-400 flex items-center justify-between">
+                <span>KARTU: {battleState.players[1].hand.length} di tangan</span>
+                <span>DEK: {battleState.players[1].drawPile.length} tersisa</span>
               </div>
             </div>
 
-            {/* QR Connection Box */}
-            <div className="mt-3 pt-3 border-t border-[#23171c] flex items-center gap-3">
-              <div className="bg-white p-1.5 rounded shadow shrink-0">
-                <QRCodeSVG value={p2ControllerUrl} size={64} level="M" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] text-stone-300 font-medium">Scan QR ini dengan kamera HP Player 2</p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <button
-                    onClick={() => copyToClipboard(p2ControllerUrl, 'p2')}
-                    className="text-[10px] font-mono bg-[#1c1318] hover:bg-[#271b22] text-stone-300 px-2 py-1 rounded border border-[#3b222b] flex items-center gap-1 transition cursor-pointer"
-                  >
-                    {copiedLink === 'p2' ? <Check className="w-3 h-3 text-amber-400" /> : <Copy className="w-3 h-3" />}
-                    <span>{copiedLink === 'p2' ? 'Tersalin!' : 'Copy Link'}</span>
-                  </button>
-                  <a
-                    href={`/controller?room=${roomCode}&player=2`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[10px] font-mono text-amber-400/90 hover:underline flex items-center gap-0.5"
-                  >
-                    <span>Buka Tab</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </a>
+            {/* Player 2: Courage Blade */}
+            <div className="bg-[#120f12] border border-[#2a1d22] rounded-xl p-4 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-2.5 border-b border-[#23171c]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded bg-[#1a1317] border border-[#3b222b] flex items-center justify-center text-amber-500">
+                      <CourageBladeSVG size={16} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-xs text-stone-200 tracking-wide">Player 2: Courage Blade</h3>
+                      <p className="text-[10px] text-amber-500/80 font-mono">Offense, Strike & Armor Break</p>
+                    </div>
+                  </div>
+
+                  <span className={cn(
+                    "text-[10px] font-mono px-2 py-0.5 rounded border flex items-center gap-1",
+                    hostHub.p2Connected
+                      ? "bg-amber-950/40 border-amber-800/80 text-amber-300"
+                      : "bg-[#11131a] border-[#222736] text-stone-400"
+                  )}>
+                    <Wifi className="w-3 h-3" />
+                    {hostHub.p2Connected ? 'HP Terhubung!' : 'Menunggu Controller'}
+                  </span>
                 </div>
+
+                {/* Stats Overview */}
+                <div className="grid grid-cols-2 gap-2 mt-3 font-mono text-xs">
+                  <div className="bg-[#0d0a0c] border border-[#201419] rounded p-2 flex justify-between">
+                    <span className="text-stone-400 text-[11px]">HP</span>
+                    <span className="text-stone-200 font-bold">{battleState.players[2].currentHp}/{battleState.players[2].maxHp}</span>
+                  </div>
+                  <div className="bg-[#0d0a0c] border border-[#201419] rounded p-2 flex justify-between">
+                    <span className="text-stone-400 text-[11px]">ENERGY</span>
+                    <span className="text-amber-400 font-bold">{battleState.players[2].energy}/{battleState.players[2].maxEnergy}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-2 text-[11px] font-mono text-stone-400 flex items-center justify-between">
+                <span>KARTU: {battleState.players[2].hand.length} di tangan</span>
+                <span>DEK: {battleState.players[2].drawPile.length} tersisa</span>
               </div>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      )}
 
       {/* Footer Controls */}
       <footer className="border-t border-[#181a24] bg-[#090a0e] px-6 py-3 flex items-center justify-between text-xs text-stone-400 font-mono">
@@ -507,7 +530,7 @@ export const HostArenaView: React.FC = () => {
             }}
             className="bg-[#1b202c] hover:bg-[#252c3d] text-stone-200 border border-[#2f374a] text-xs px-3.5 py-1.5 rounded transition font-mono cursor-pointer"
           >
-            {battleState.phase === 'LOBBY' ? 'Mulai Turn Pertarungan' : 'Kembali ke Lobby'}
+            {battleState.phase === 'LOBBY' ? 'Lompat ke Battle Arena' : 'Kembali ke Ruang Tunggu (Lobby)'}
           </button>
         </div>
       </footer>
