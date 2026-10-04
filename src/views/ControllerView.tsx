@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BookOpen } from 'lucide-react';
 import { PlayerId, Card, PlayerState } from '../types/game';
 import { INITIAL_PLAYER_1, INITIAL_PLAYER_2 } from '../data/initialGameData';
 import { 
@@ -7,6 +8,7 @@ import {
   EnergyOrbSVG, 
   IronShieldSVG 
 } from '../components/svg/DungeonArt';
+import { GlossaryModal } from '../components/GlossaryModal';
 import { cn } from '../lib/utils';
 
 export const ControllerView: React.FC = () => {
@@ -20,6 +22,7 @@ export const ControllerView: React.FC = () => {
   );
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [lastPlayedCardName, setLastPlayedCardName] = useState<string | null>(null);
+  const [isGlossaryOpen, setIsGlossaryOpen] = useState<boolean>(false);
 
   const handleSelectRole = (id: PlayerId) => {
     setActivePlayerId(id);
@@ -87,31 +90,42 @@ export const ControllerView: React.FC = () => {
     <div className="min-h-screen w-full bg-[#0a0b0e] text-stone-200 flex flex-col justify-between p-4 max-w-md mx-auto select-none font-sans">
       {/* Top Header: Role Selector & Vitality */}
       <header className="flex flex-col gap-2.5 pt-1">
-        {/* Role Toggle Tab (Mudah untuk testing/tukar role) */}
-        <div className="grid grid-cols-2 rounded-lg bg-[#11131a] p-1 border border-[#1e2330] text-xs font-mono">
+        {/* Role Toggle Tab & Glossary Button */}
+        <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 flex-1 rounded-lg bg-[#11131a] p-1 border border-[#1e2330] text-xs font-mono">
+            <button
+              onClick={() => handleSelectRole(1)}
+              className={cn(
+                "py-1.5 rounded flex items-center justify-center gap-1.5 transition",
+                isEmpathy 
+                  ? "bg-[#162125] text-teal-300 border border-[#23353b]" 
+                  : "text-stone-400 hover:text-stone-300"
+              )}
+            >
+              <EmpathyRuneSVG size={14} />
+              <span>P1: Empathy</span>
+            </button>
+            <button
+              onClick={() => handleSelectRole(2)}
+              className={cn(
+                "py-1.5 rounded flex items-center justify-center gap-1.5 transition",
+                !isEmpathy 
+                  ? "bg-[#23171c] text-amber-400 border border-[#3b222b]" 
+                  : "text-stone-400 hover:text-stone-300"
+              )}
+            >
+              <CourageBladeSVG size={14} />
+              <span>P2: Courage</span>
+            </button>
+          </div>
+
           <button
-            onClick={() => handleSelectRole(1)}
-            className={cn(
-              "py-1.5 rounded flex items-center justify-center gap-1.5 transition",
-              isEmpathy 
-                ? "bg-[#162125] text-teal-300 border border-[#23353b]" 
-                : "text-stone-400 hover:text-stone-300"
-            )}
+            onClick={() => setIsGlossaryOpen(true)}
+            className="h-9 px-2.5 rounded-lg bg-[#11131a] hover:bg-[#1a1f2c] border border-[#1e2330] text-amber-400 text-xs font-mono flex items-center gap-1.5 transition shrink-0"
+            title="Buka Glosarium & Panduan"
           >
-            <EmpathyRuneSVG size={14} />
-            <span>P1: Empathy</span>
-          </button>
-          <button
-            onClick={() => handleSelectRole(2)}
-            className={cn(
-              "py-1.5 rounded flex items-center justify-center gap-1.5 transition",
-              !isEmpathy 
-                ? "bg-[#23171c] text-amber-400 border border-[#3b222b]" 
-                : "text-stone-400 hover:text-stone-300"
-            )}
-          >
-            <CourageBladeSVG size={14} />
-            <span>P2: Courage</span>
+            <BookOpen className="w-3.5 h-3.5" />
+            <span className="text-[11px]">Buku</span>
           </button>
         </div>
 
@@ -257,6 +271,9 @@ export const ControllerView: React.FC = () => {
           <span>End Turn (Selesaikan Giliran)</span>
         </button>
       </div>
+
+      {/* Modal Glosarium & Panduan Labirin */}
+      <GlossaryModal isOpen={isGlossaryOpen} onClose={() => setIsGlossaryOpen(false)} />
     </div>
   );
 };

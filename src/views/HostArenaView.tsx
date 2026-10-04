@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Check, ChevronRight } from 'lucide-react';
+import { Copy, Check, ChevronRight, BookOpen } from 'lucide-react';
 import { BattleState } from '../types/game';
 import { INITIAL_BATTLE_STATE } from '../data/initialGameData';
 import { 
@@ -10,11 +10,13 @@ import {
   IronShieldSVG,
   CoupleQuestLogoSVG
 } from '../components/svg/DungeonArt';
+import { GlossaryModal } from '../components/GlossaryModal';
 import { cn } from '../lib/utils';
 
 export const HostArenaView: React.FC = () => {
   const [battleState, setBattleState] = useState<BattleState>(INITIAL_BATTLE_STATE);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [isGlossaryOpen, setIsGlossaryOpen] = useState<boolean>(false);
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const p1ControllerUrl = `${baseUrl}/controller?player=1`;
@@ -88,6 +90,16 @@ export const HostArenaView: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Tombol Glosarium / Panduan Labirin */}
+          <button
+            onClick={() => setIsGlossaryOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#161a26] hover:bg-[#202738] border border-[#262f44] text-xs text-amber-300 font-mono transition cursor-pointer"
+            title="Buka Buku Panduan & Glosarium"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Panduan Labirin</span>
+          </button>
         </div>
       </header>
 
@@ -287,6 +299,9 @@ export const HostArenaView: React.FC = () => {
           {battleState.phase === 'LOBBY' ? 'Simulate Start Turn' : 'Return to Lobby'}
         </button>
       </footer>
+
+      {/* Modal Glosarium & Panduan Labirin */}
+      <GlossaryModal isOpen={isGlossaryOpen} onClose={() => setIsGlossaryOpen(false)} />
     </div>
   );
 };
