@@ -1,22 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  Heart, 
-  Zap, 
-  Sparkles, 
-  Shield, 
-  Flame, 
-  Send, 
-  ArrowUpCircle, 
-  CheckCircle2, 
-  Swords,
-  Wind
-} from 'lucide-react';
 import { PlayerId, Card, PlayerState } from '../types/game';
 import { INITIAL_PLAYER_1, INITIAL_PLAYER_2 } from '../data/initialGameData';
+import { 
+  EmpathyRuneSVG, 
+  CourageBladeSVG, 
+  EnergyOrbSVG, 
+  IronShieldSVG 
+} from '../components/svg/DungeonArt';
 import { cn } from '../lib/utils';
 
 export const ControllerView: React.FC = () => {
-  // Extract ?player=1 or 2 from query string or default to 1
   const searchParams = new URLSearchParams(window.location.search);
   const paramPlayer = searchParams.get('player');
   const initialPlayerId: PlayerId = paramPlayer === '2' ? 2 : 1;
@@ -28,7 +21,6 @@ export const ControllerView: React.FC = () => {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [lastPlayedCardName, setLastPlayedCardName] = useState<string | null>(null);
 
-  // Switch role handler for testing both players on one device
   const handleSelectRole = (id: PlayerId) => {
     setActivePlayerId(id);
     setPlayerState(id === 1 ? INITIAL_PLAYER_1 : INITIAL_PLAYER_2);
@@ -41,9 +33,8 @@ export const ControllerView: React.FC = () => {
       return;
     }
 
-    // Trigger haptic vibration if supported
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-      navigator.vibrate(60);
+      navigator.vibrate(40);
     }
 
     setPlayerState((prev) => ({
@@ -58,128 +49,114 @@ export const ControllerView: React.FC = () => {
 
     setTimeout(() => {
       setLastPlayedCardName(null);
-    }, 2500);
+    }, 2200);
   };
 
   const isEmpathy = activePlayerId === 1;
 
-  const getCardIcon = (iconName?: string) => {
-    switch (iconName) {
-      case 'Ear':
-        return <Shield className="w-5 h-5 text-cyan-400" />;
-      case 'HeartHandshake':
-        return <Heart className="w-5 h-5 text-rose-400 fill-rose-400/20" />;
-      case 'Wind':
-        return <Wind className="w-5 h-5 text-teal-300" />;
-      case 'MessageSquareWarning':
-        return <Swords className="w-5 h-5 text-rose-400" />;
-      case 'Flame':
-        return <Flame className="w-5 h-5 text-amber-400" />;
-      case 'Zap':
-        return <Zap className="w-5 h-5 text-yellow-400" />;
-      default:
-        return <Sparkles className="w-5 h-5 text-indigo-400" />;
-    }
-  };
-
-  const getCardBorderColor = (type: Card['type']) => {
+  const getCardTypeBadge = (type: Card['type']) => {
     switch (type) {
       case 'ATTACK':
-        return 'border-rose-500/50 hover:border-rose-400 shadow-rose-950/40';
+        return <span className="text-[10px] font-mono text-red-300 bg-red-950/40 border border-red-900/60 px-1.5 py-0.5 rounded">STRIKE</span>;
       case 'SHIELD':
-        return 'border-cyan-500/50 hover:border-cyan-400 shadow-cyan-950/40';
+        return <span className="text-[10px] font-mono text-teal-300 bg-teal-950/40 border border-teal-900/60 px-1.5 py-0.5 rounded">DEFEND</span>;
       case 'HEAL':
-        return 'border-emerald-500/50 hover:border-emerald-400 shadow-emerald-950/40';
+        return <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/40 border border-emerald-900/60 px-1.5 py-0.5 rounded">MEND</span>;
       case 'BUFF':
       case 'SYMPATHY':
-        return 'border-violet-500/50 hover:border-violet-400 shadow-violet-950/40';
-      default:
-        return 'border-slate-700 shadow-slate-900/40';
+        return <span className="text-[10px] font-mono text-amber-300 bg-amber-950/40 border border-amber-900/60 px-1.5 py-0.5 rounded">HARMONY</span>;
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col justify-between p-4 max-w-md mx-auto select-none">
-      {/* Top Header: Player Role & Energy */}
-      <header className="flex flex-col gap-3 pt-2">
-        {/* Quick Role Toggle Bar for easy dev/testing */}
-        <div className="flex rounded-xl bg-slate-900 p-1 border border-slate-800 text-xs font-semibold">
+    <div className="min-h-screen w-full bg-[#0a0b0e] text-stone-200 flex flex-col justify-between p-4 max-w-md mx-auto select-none font-sans">
+      {/* Top Header: Role Selector & Vitality */}
+      <header className="flex flex-col gap-2.5 pt-1">
+        {/* Subtle Role Toggle Tab */}
+        <div className="grid grid-cols-2 rounded-lg bg-[#11131a] p-1 border border-[#1e2330] text-xs font-mono">
           <button
             onClick={() => handleSelectRole(1)}
             className={cn(
-              "flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition",
-              isEmpathy ? "bg-cyan-600 text-white shadow-md shadow-cyan-600/30" : "text-slate-400 hover:text-slate-200"
+              "py-1.5 rounded flex items-center justify-center gap-1.5 transition",
+              isEmpathy 
+                ? "bg-[#162125] text-teal-300 border border-[#23353b]" 
+                : "text-stone-400 hover:text-stone-300"
             )}
           >
-            <Heart className="w-3.5 h-3.5 fill-current" />
+            <EmpathyRuneSVG size={14} />
             <span>P1: Empathy</span>
           </button>
           <button
             onClick={() => handleSelectRole(2)}
             className={cn(
-              "flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition",
-              !isEmpathy ? "bg-rose-600 text-white shadow-md shadow-rose-600/30" : "text-slate-400 hover:text-slate-200"
+              "py-1.5 rounded flex items-center justify-center gap-1.5 transition",
+              !isEmpathy 
+                ? "bg-[#23171c] text-amber-400 border border-[#3b222b]" 
+                : "text-stone-400 hover:text-stone-300"
             )}
           >
-            <Flame className="w-3.5 h-3.5 fill-current" />
+            <CourageBladeSVG size={14} />
             <span>P2: Courage</span>
           </button>
         </div>
 
-        {/* Current Player Status Card */}
+        {/* Player Status Tablet */}
         <div className={cn(
-          "rounded-2xl border p-4 flex items-center justify-between backdrop-blur-md transition-colors",
-          isEmpathy ? "bg-cyan-950/30 border-cyan-800/50" : "bg-rose-950/30 border-rose-800/50"
+          "rounded-xl border p-3.5 flex items-center justify-between transition-colors",
+          isEmpathy ? "bg-[#0d1216] border-[#1c2930]" : "bg-[#140f12] border-[#2d1e24]"
         )}>
           <div>
             <div className="flex items-center gap-2">
-              <span className={cn(
-                "w-2 h-2 rounded-full animate-ping",
-                isEmpathy ? "bg-cyan-400" : "bg-rose-400"
-              )} />
-              <h2 className="text-base font-black tracking-wide text-slate-100">
+              <h2 className="text-sm font-semibold tracking-wide text-stone-100">
                 {playerState.name}
               </h2>
             </div>
-            <p className={cn("text-xs font-medium mt-0.5", isEmpathy ? "text-cyan-400" : "text-rose-400")}>
-              {isEmpathy ? "Support & Combo Amplification" : "Offense & Armor Breaker"}
+            <p className={cn("text-[11px] font-mono mt-0.5", isEmpathy ? "text-teal-400/80" : "text-amber-500/80")}>
+              {isEmpathy ? "Support & Mitigation" : "Offense & Armor Break"}
             </p>
           </div>
 
-          {/* Energy Crystals */}
-          <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 px-3 py-1.5 rounded-xl shadow-inner">
-            <Zap className="w-4 h-4 text-amber-400 fill-amber-400 animate-pulse" />
-            <span className="text-sm font-black text-amber-300">
-              {playerState.energy}
-              <span className="text-xs text-slate-400 font-normal">/{playerState.maxEnergy}</span>
+          {/* Energy Soul Talismans */}
+          <div className="flex items-center gap-2 bg-[#090a0e] border border-[#1e2230] px-2.5 py-1.5 rounded-lg">
+            <div className="flex items-center gap-1">
+              {Array.from({ length: playerState.maxEnergy }).map((_, i) => (
+                <EnergyOrbSVG 
+                  key={i} 
+                  size={14} 
+                  className={i < playerState.energy ? "text-amber-400 fill-amber-400" : "text-stone-700"} 
+                />
+              ))}
+            </div>
+            <span className="text-xs font-mono font-bold text-amber-300">
+              {playerState.energy}/{playerState.maxEnergy}
             </span>
           </div>
         </div>
       </header>
 
-      {/* Center Zone: Played card notification / prompt */}
-      <div className="my-auto py-4 text-center">
+      {/* Center Zone: Notification of Dispatched Action */}
+      <div className="my-auto py-3 text-center min-h-[44px] flex items-center justify-center">
         {lastPlayedCardName ? (
-          <div className="inline-flex items-center gap-2 bg-indigo-950/80 border border-indigo-500/50 px-4 py-2 rounded-2xl text-xs font-bold text-indigo-200 shadow-xl animate-bounce">
-            <ArrowUpCircle className="w-4 h-4 text-indigo-400" />
-            <span>Dilemparkan ke Desktop: {lastPlayedCardName}!</span>
+          <div className="inline-flex items-center gap-2 bg-[#141824] border border-[#2b334a] px-3.5 py-1.5 rounded-lg text-xs font-mono text-stone-200 shadow">
+            <span className="text-amber-400">&#10003;</span>
+            <span>Cast to Arena: {lastPlayedCardName}</span>
           </div>
         ) : (
-          <p className="text-xs text-slate-400 flex items-center justify-center gap-1.5">
-            <span>Pilih kartu lalu sentuh untuk mengirim ke desktop</span>
-          </p>
+          <span className="text-[11px] font-mono text-stone-400">
+            Pilih kartu di bawah lalu mainkan ke altar
+          </span>
         )}
       </div>
 
-      {/* Bottom Zone: Hand of Cards & Action Bar */}
-      <div className="flex flex-col gap-3 pb-2">
-        <div className="flex items-center justify-between text-xs font-bold text-slate-400 px-1">
-          <span>TANGAN PEMAIN ({playerState.hand.length})</span>
-          <span className="text-slate-400 font-mono text-[11px]">DEK: {playerState.drawPile.length} | DISCARD: {playerState.discardPile.length}</span>
+      {/* Bottom Zone: Hand Cards & End Turn */}
+      <div className="flex flex-col gap-2.5 pb-2">
+        <div className="flex items-center justify-between text-[11px] font-mono text-stone-400 px-1 border-b border-[#181b26] pb-1.5">
+          <span>HAND ({playerState.hand.length})</span>
+          <span>DRAW: {playerState.drawPile.length} &bull; DISCARD: {playerState.discardPile.length}</span>
         </div>
 
-        {/* Hand Cards List */}
-        <div className="flex flex-col gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
+        {/* Hand of Cards */}
+        <div className="flex flex-col gap-2 max-h-[52vh] overflow-y-auto pr-0.5">
           {playerState.hand.map((card) => {
             const isSelected = selectedCardId === card.id;
             const canAfford = playerState.energy >= card.cost;
@@ -189,40 +166,36 @@ export const ControllerView: React.FC = () => {
                 key={card.id}
                 onClick={() => setSelectedCardId(isSelected ? null : card.id)}
                 className={cn(
-                  "relative rounded-2xl border p-3.5 transition-all duration-200 flex flex-col justify-between cursor-pointer",
-                  getCardBorderColor(card.type),
-                  isSelected 
-                    ? "bg-slate-900 ring-2 ring-indigo-400 -translate-y-0.5 shadow-lg" 
-                    : "bg-slate-900/80 hover:bg-slate-900",
-                  !canAfford && "opacity-50 grayscale-40"
+                  "relative rounded-xl border p-3 transition-all cursor-pointer flex flex-col justify-between",
+                  isSelected
+                    ? "bg-[#151824] border-amber-500/70 shadow-md -translate-y-0.5"
+                    : "bg-[#0e1017] border-[#1e2230] hover:border-[#2e354a]",
+                  !canAfford && "opacity-40"
                 )}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700/60 flex items-center justify-center shrink-0 shadow-inner">
-                      {getCardIcon(card.icon)}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-sm text-slate-100 flex items-center gap-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-xs text-stone-100 tracking-wide truncate">
                         {card.name}
-                        <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                          {card.type}
-                        </span>
                       </h4>
-                      <p className="text-xs text-slate-400 mt-1 leading-snug">{card.description}</p>
+                      {getCardTypeBadge(card.type)}
                     </div>
+                    <p className="text-[11px] text-stone-400 mt-1 leading-relaxed">
+                      {card.description}
+                    </p>
                   </div>
 
-                  {/* Cost Badge */}
-                  <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 font-black text-xs flex items-center justify-center shadow-inner shrink-0 ml-2">
+                  {/* Energy Cost Token */}
+                  <div className="w-6 h-6 rounded-md bg-[#161924] border border-[#2b3145] text-amber-300 font-mono font-bold text-[11px] flex items-center justify-center shrink-0">
                     {card.cost}
                   </div>
                 </div>
 
-                {/* Selected Action CTA */}
+                {/* Selected Card Action CTA */}
                 {isSelected && (
-                  <div className="mt-3 pt-3 border-t border-slate-800 flex items-center justify-between">
-                    <span className="text-xs text-slate-400">Target: {card.targetType}</span>
+                  <div className="mt-2.5 pt-2.5 border-t border-[#1e2434] flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-stone-400">Target: {card.targetType}</span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -230,14 +203,13 @@ export const ControllerView: React.FC = () => {
                       }}
                       disabled={!canAfford}
                       className={cn(
-                        "px-4 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition",
-                        canAfford 
-                          ? "bg-linear-to-r from-rose-500 to-indigo-600 text-white hover:opacity-90 active:scale-95" 
-                          : "bg-slate-800 text-slate-400 cursor-not-allowed"
+                        "px-3.5 py-1 rounded text-xs font-mono font-semibold transition",
+                        canAfford
+                          ? "bg-amber-600 hover:bg-amber-500 text-stone-950 active:scale-95 shadow"
+                          : "bg-[#181a24] text-stone-400 border border-[#252a38] cursor-not-allowed"
                       )}
                     >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Mainkan ({card.cost} Energy)</span>
+                      Cast Card ({card.cost} Energy)
                     </button>
                   </div>
                 )}
@@ -246,8 +218,8 @@ export const ControllerView: React.FC = () => {
           })}
 
           {playerState.hand.length === 0 && (
-            <div className="text-center py-8 rounded-2xl border border-dashed border-slate-800 text-slate-400 text-xs">
-              Kartu di tangan habis. Tunggu giliran berikutnya!
+            <div className="text-center py-6 rounded-lg border border-dashed border-[#1e2230] text-stone-400 text-xs font-mono">
+              Dek kartu tangan kosong. Tunggu giliran berikutnya.
             </div>
           )}
         </div>
@@ -255,7 +227,6 @@ export const ControllerView: React.FC = () => {
         {/* End Turn Button */}
         <button
           onClick={() => {
-            // Restore energy and draw starter hand for next turn preview
             setPlayerState(prev => ({
               ...prev,
               energy: prev.maxEnergy,
@@ -265,10 +236,10 @@ export const ControllerView: React.FC = () => {
               navigator.vibrate(30);
             }
           }}
-          className="w-full mt-2 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition active:scale-98"
+          className="w-full mt-1 py-2.5 rounded-lg bg-[#141722] hover:bg-[#1a1f2e] border border-[#242b3d] text-stone-300 font-mono text-xs flex items-center justify-center gap-1.5 transition active:scale-98"
         >
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>Akhiri Giliran (End Turn)</span>
+          <IronShieldSVG size={14} className="text-stone-400" />
+          <span>Selesaikan Giliran (End Turn)</span>
         </button>
       </div>
     </div>
